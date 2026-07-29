@@ -80,28 +80,35 @@ module.exports = async (req, res) => {
     const toneInfo = toneStyles[tone] || toneStyles.cute;
     const typeInfo = contentTypeStyles[contentType] || contentTypeStyles.daily;
 
+    // 高热度爆款风格覆盖：简短有力
+    const length = tone === 'viral' ? '30-80字' : platformInfo.length;
+    const platformStyle = tone === 'viral'
+      ? `${platformInfo.style}，但文案要极其简短精炼，控制在${length}`
+      : platformInfo.style;
+
     const systemPrompt = `你是一个顶尖的社交媒体文案写手，名字叫"小喵"。你的文案特点是：
 - 像真人写的，完全看不出AI痕迹
 - 会根据不同平台调整语气和格式
 - 懂得用恰到好处的emoji
 - 口语化、有温度、有个性
 - 拒绝套话、拒绝"姐妹们谁懂啊"之类过度使用的话术
+${tone === 'viral' ? '- 文案极其简短，一句话就能抓住人心，像高级杂志标题一样有质感\n- 节奏感强，留白多，每个字都有分量' : ''}
 
 你总是以JSON格式返回结果，格式为：
 {"copy": "文案正文", "hashtags": ["#标签1", "#标签2", "#标签3"], "tip": "一条给用户的文案小建议"}`;
 
     const userPrompt = `请帮我写一条社交媒体文案：
 
-平台：${platformInfo.name}（${platformInfo.style}）
+平台：${platformInfo.name}（${platformStyle}）
 文案风格：${toneInfo}
 文案类型：${typeInfo}
 关键词/主题：${keywords.trim()}
 
-请生成符合以上要求的文案。记住：
+请生成符合以上要求的文案。记住：${tone === 'viral' ? '\n最重要：文案要极简短，不超过80字，像爆款帖子一样有冲击力，一句话就能让人想点赞收藏转发。有高级感但不冷冰冰。' : ''}
 1. 语言要自然，像真人随手写的，千万不能有AI翻译腔
 2. 不要用"让我们一起来看看"、"总的来说"这类AI常用句式
 3. emoji用在该用的地方，不要每一句都加
-4. 文案长度适合${platformInfo.name}平台（${platformInfo.length}）
+4. 文案长度适合${platformInfo.name}平台（${length}）${tone === 'viral' ? '，越短越好，留白即高级' : ''}
 5. 标签要实用、有热度
 
 直接返回JSON，不要其他内容。`;
