@@ -1,0 +1,11 @@
+# Cloudflare Pages config
+# Functions dir auto-detected as functions/
+
+[build]
+  command = ""
+  publish = "."
+
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
