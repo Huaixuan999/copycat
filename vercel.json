@@ -1,7 +1,14 @@
 {
+  "buildCommand": "npm install",
+  "outputDirectory": ".",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/$1" }
+  ],
   "functions": {
     "api/generate.js": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 512
     }
   }
 }
