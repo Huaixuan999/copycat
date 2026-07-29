@@ -51,6 +51,7 @@ const contentTypeStyles = {
   mood: '心情语录，表达情感和感悟',
   food: '美食探店分享，描述味道和体验',
   travel: '旅行攻略/游记，分享美景和旅行tips',
+  love: '恋爱专属标题，抖音高播放量恋爱视频的标题风格，简短心动感，适合用作视频标题、封面文字、朋友圈秀恩爱文案',
 };
 
 module.exports = async (req, res) => {
@@ -80,11 +81,16 @@ module.exports = async (req, res) => {
     const toneInfo = toneStyles[tone] || toneStyles.cute;
     const typeInfo = contentTypeStyles[contentType] || contentTypeStyles.daily;
 
-    // 高热度爆款风格覆盖：简短有力
-    const length = tone === 'viral' ? '30-80字' : platformInfo.length;
-    const platformStyle = tone === 'viral'
-      ? `${platformInfo.style}，但文案要极其简短精炼，控制在${length}`
-      : platformInfo.style;
+    // 恋爱专属标题覆盖：极短 + 抖音高赞风格
+    const isLove = contentType === 'love';
+    const length = isLove
+      ? '10-50字'
+      : (tone === 'viral' ? '30-80字' : platformInfo.length);
+    const platformStyle = isLove
+      ? `抖音高播放量恋爱视频的标题风格，一句话让人心动，像百万点赞视频的文案`
+      : (tone === 'viral'
+        ? `${platformInfo.style}，但文案要极其简短精炼，控制在${length}`
+        : platformInfo.style);
 
     const systemPrompt = `你是一个顶尖的社交媒体文案写手，名字叫"小喵"。你的文案特点是：
 - 像真人写的，完全看不出AI痕迹
@@ -93,6 +99,7 @@ module.exports = async (req, res) => {
 - 口语化、有温度、有个性
 - 拒绝套话、拒绝"姐妹们谁懂啊"之类过度使用的话术
 ${tone === 'viral' ? '- 文案极其简短，一句话就能抓住人心，像高级杂志标题一样有质感\n- 节奏感强，留白多，每个字都有分量' : ''}
+${isLove ? '- 专门写恋爱/情侣标题，从抖音高播放量恋爱视频中汲取灵感\n- 一句话让人心跳加速，甜而不腻，有高级心动感\n- 像百万点赞恋爱视频的封面标题，又像朋友圈秀恩爱的神仙文案\n- 参考风格：\n  "原来被爱的感觉是这样"\n  "他看我的眼神里有星星"\n  "在一起的第365天，依然心动"\n  "遇见你之后，所有的风景都温柔了"\n  "不是将就，是恰好是你"' : ''}
 
 你总是以JSON格式返回结果，格式为：
 {"copy": "文案正文", "hashtags": ["#标签1", "#标签2", "#标签3"], "tip": "一条给用户的文案小建议"}`;
@@ -104,12 +111,12 @@ ${tone === 'viral' ? '- 文案极其简短，一句话就能抓住人心，像�
 文案类型：${typeInfo}
 关键词/主题：${keywords.trim()}
 
-请生成符合以上要求的文案。记住：${tone === 'viral' ? '\n最重要：文案要极简短，不超过80字，像爆款帖子一样有冲击力，一句话就能让人想点赞收藏转发。有高级感但不冷冰冰。' : ''}
+请生成符合以上要求的文案。记住：${isLove ? '\n最重要：这是恋爱专属标题！要像抖音百万点赞恋爱视频的封面文案一样，一句话让人心动。必须简短（10-50字），甜而有高级感，像真实高播放量视频的标题，不是土味情话！' : ''}${tone === 'viral' && !isLove ? '\n最重要：文案要极简短，不超过80字，像爆款帖子一样有冲击力，一句话就能让人想点赞收藏转发。有高级感但不冷冰冰。' : ''}
 1. 语言要自然，像真人随手写的，千万不能有AI翻译腔
-2. 不要用"让我们一起来看看"、"总的来说"这类AI常用句式
+2. 不要用"让我们一起来看看"、"总的来说"这类AI常用句式${isLove ? '\n2.5. 不要写土味情话！要有真正心动感，像抖音高赞恋爱视频的标题字幕' : ''}
 3. emoji用在该用的地方，不要每一句都加
-4. 文案长度适合${platformInfo.name}平台（${length}）${tone === 'viral' ? '，越短越好，留白即高级' : ''}
-5. 标签要实用、有热度
+4. 文案长度${isLove ? '控制在10-50字，越短越有冲击力，一句话就够了' : `适合${platformInfo.name}平台（${length}）${tone === 'viral' ? '，越短越好，留白即高级' : ''}`}
+5. 标签要实用、有热度${isLove ? '\n6. 每条都是独立的恋爱标题，适合配情侣合照、牵手照、甜蜜瞬间' : ''}
 
 直接返回JSON，不要其他内容。`;
 
