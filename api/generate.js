@@ -143,20 +143,47 @@ ${isLove ? '- 专门写恋爱/情侣标题，从抖音高播放量恋爱视频�
       throw new Error(data.error?.message || `API 返回错误 (${response.status})`);
     }
 
-    const text = data.choices[0].message.content;
+    const raw = data.choices[0].message.content;
     let result;
 
-    try {
-      // Try to extract JSON from the response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
-      } else {
-        result = { copy: text, hashtags: [], tip: '文案已生成~' };
+    // Robust JSON extraction
+    const tryParse = (text) => {
+      // 1. Strip markdown code blocks
+      let cleaned = text
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .trim();
+
+      // 2. Try direct JSON parse
+      try { return JSON.parse(cleaned); } catch {}
+
+      // 3. Try matching JSON block
+      const m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) {
+        try { return JSON.parse(m[0]); } catch {}
+        try { return JSON.parse(m[0].replace(/#\S+/g, (tag) => tag.replace(/"/g, ''))); } catch {}
       }
-    } catch {
-      result = { copy: text, hashtags: [], tip: '文案已生成~' };
-    }
+
+      // 4. Extract fields individually
+      const copyM = cleaned.match(/"copy"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      const tagsM = cleaned.match(/"hashtags"\s*:\s*\[([^\]]*)\]/);
+      const tipM = cleaned.match(/"tip"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+
+      if (copyM) {
+        const tags = tagsM
+          ? (tagsM[1].match(/#[^\s",\]]+/g) || []).map(t => t.replace(/,$/, ''))
+          : [];
+        return {
+          copy: copyM[1].replace(/\\"/g, '"').replace(/\\n/g, '\n'),
+          hashtags: tags,
+          tip: tipM ? tipM[1].replace(/\\"/g, '"') : '',
+        };
+      }
+
+      return null;
+    };
+
+    result = tryParse(raw) || { copy: raw, hashtags: [], tip: '文案已生成~' };
 
     res.writeHead(200, headers);
     res.end(
