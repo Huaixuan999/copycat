@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文案喵 - 社交媒体文案生成器</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
+</head>
+<body>
+  <!-- Floating decorations -->
+  <div class="decorations" id="decorations"></div>
+
+  <!-- Header / Nav -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo" id="logo">
+        <div class="cat-icon" id="headerCat"></div>
+        <span class="logo-text">文案喵</span>
+      </div>
+      <nav class="nav-links">
+        <button class="nav-btn active" data-panel="generator">
+          <span class="nav-icon">✨</span> 生成
+        </button>
+        <button class="nav-btn" data-panel="history">
+          <span class="nav-icon">📜</span> 历史
+        </button>
+        <button class="nav-btn" data-panel="favorites">
+          <span class="nav-icon">⭐</span> 收藏
+          <span class="badge" id="favBadge" style="display:none">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- Generator Panel -->
+    <section class="panel active" id="panel-generator">
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-cat" id="heroCat"></div>
+        <h1 class="hero-title">让你的文案闪闪发光 ✨</h1>
+        <p class="hero-subtitle">告诉小喵你想写什么，一键生成超自然文案~</p>
+      </div>
+
+      <!-- Search Box -->
+      <div class="search-section">
+        <div class="search-box-wrapper">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input
+              type="text"
+              id="keywordInput"
+              class="search-input"
+              placeholder="输入关键词、产品名、或者你想表达的想法..."
+              autocomplete="off"
+            />
+            <button class="btn-generate" id="btnGenerate">
+              <span class="btn-generate-text">生成文案</span>
+              <span class="btn-generate-icon">✨</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="options-section">
+        <!-- Platform -->
+        <div class="option-group">
+          <span class="option-label">📱 选择平台</span>
+          <div class="option-chips" id="platformChips">
+            <button class="chip active" data-value="xiaohongshu">
+              <span class="chip-emoji">📕</span> 小红书
+            </button>
+            <button class="chip" data-value="weibo">
+              <span class="chip-emoji">📢</span> 微博
+            </button>
+            <button class="chip" data-value="douyin">
+              <span class="chip-emoji">🎵</span> 抖音
+            </button>
+            <button class="chip" data-value="pengyouquan">
+              <span class="chip-emoji">💬</span> 朋友圈
+            </button>
+            <button class="chip" data-value="instagram">
+              <span class="chip-emoji">📷</span> Instagram
+            </button>
+          </div>
+        </div>
+
+        <!-- Tone -->
+        <div class="option-group">
+          <span class="option-label">🎀 文案风格</span>
+          <div class="option-chips" id="toneChips">
+            <button class="chip active" data-value="cute">
+              <span class="chip-emoji">🌸</span> 活泼可爱
+            </button>
+            <button class="chip" data-value="gentle">
+              <span class="chip-emoji">🌙</span> 温柔治愈
+            </button>
+            <button class="chip" data-value="literary">
+              <span class="chip-emoji">🍃</span> 文艺清新
+            </button>
+            <button class="chip" data-value="simple">
+              <span class="chip-emoji">✨</span> 简约大气
+            </button>
+          </div>
+        </div>
+
+        <!-- Content Type -->
+        <div class="option-group">
+          <span class="option-label">📝 内容类型</span>
+          <div class="option-chips" id="typeChips">
+            <button class="chip" data-value="promotion">
+              <span class="chip-emoji">🛍️</span> 产品推广
+            </button>
+            <button class="chip active" data-value="daily">
+              <span class="chip-emoji">📝</span> 日常分享
+            </button>
+            <button class="chip" data-value="mood">
+              <span class="chip-emoji">💭</span> 心情语录
+            </button>
+            <button class="chip" data-value="food">
+              <span class="chip-emoji">🍜</span> 美食探店
+            </button>
+            <button class="chip" data-value="travel">
+              <span class="chip-emoji">✈️</span> 旅行攻略
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-section" id="loadingSection" style="display:none;">
+        <div class="loading-cat" id="loadingCat"></div>
+        <p class="loading-text" id="loadingText">小喵正在努力思考中...</p>
+        <div class="loading-dots">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="results-section" id="resultsSection" style="display:none;">
+        <div class="results-header">
+          <h2 class="results-title">🐱 小喵帮你写好了~</h2>
+          <button class="btn-text" id="btnClearResults">清空结果</button>
+        </div>
+        <div class="results-list" id="resultsList"></div>
+      </div>
+
+      <!-- Empty state when no search yet -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-illustration">
+          <div class="empty-cat"></div>
+        </div>
+        <p class="empty-text">在上面输入关键词，小喵帮你写文案~</p>
+        <div class="example-tags">
+          <span class="example-label">试试这些：</span>
+          <button class="example-chip">夏日限定奶茶</button>
+          <button class="example-chip">周末探店打卡</button>
+          <button class="example-chip">新入手的口红</button>
+          <button class="example-chip">毕业季心情</button>
+          <button class="example-chip">海边旅行攻略</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Panel -->
+    <section class="panel" id="panel-history">
+      <div class="panel-header">
+        <h2 class="panel-title">📜 历史记录</h2>
+        <button class="btn-text-danger" id="btnClearHistory">清空全部历史</button>
+      </div>
+      <div class="panel-content" id="historyContent">
+        <div class="empty-panel">
+          <div class="empty-icon">📭</div>
+          <p>还没有生成过文案哦~</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Favorites Panel -->
+    <section class="panel" id="panel-favorites">
+      <div class="panel-header">
+        <h2 class="panel-title">⭐ 我的收藏</h2>
+        <button class="btn-text-danger" id="btnClearFavorites">清空全部收藏</button>
+      </div>
+      <div class="panel-content" id="favoritesContent">
+        <div class="empty-panel">
+          <div class="empty-icon">💝</div>
+          <p>收藏你喜欢的文案，方便以后查看~</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <span>🐱 文案喵 · 让你的表达更可爱</span>
+      <span class="footer-divider">·</span>
+      <span>© 2026</span>
+    </div>
+  </footer>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="toast-icon"></span>
+    <span class="toast-text"></span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/cat.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

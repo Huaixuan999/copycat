@@ -1,0 +1,12 @@
+{
+  "name": "copycat",
+  "version": "1.0.0",
+  "description": "文案喵 - 社交媒体文案生成器",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.37.0"
+  }
+}
