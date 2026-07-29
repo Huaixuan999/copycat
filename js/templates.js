@@ -138,7 +138,7 @@ const Templates = {
   },
 
   _toneName(tone) {
-    const map = { cute: '活泼可爱', gentle: '温柔治愈', literary: '文艺清新', simple: '简约大气' };
+    const map = { cute: '活泼可爱', gentle: '温柔治愈', literary: '文艺清新', simple: '简约大气', viral: '高热度爆款' };
     return map[tone] || tone;
   },
 
