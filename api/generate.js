@@ -1,5 +1,3 @@
-const Anthropic = require('@anthropic-ai/sdk');
-
 // CORS headers
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -107,25 +105,30 @@ module.exports = async (req, res) => {
 
 直接返回JSON，不要其他内容。`;
 
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 1024,
+        temperature: 0.9,
+      }),
     });
 
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      temperature: 0.85,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-    });
+    const data = await response.json();
 
-    // Parse the response
-    const text = message.content[0].text;
+    if (!response.ok) {
+      throw new Error(data.error?.message || `API 返回错误 (${response.status})`);
+    }
+
+    const text = data.choices[0].message.content;
     let result;
 
     try {
