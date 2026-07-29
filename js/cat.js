@@ -192,8 +192,7 @@ const CatMascot = {
    */
   setState(state) {
     this.state = state;
-    // 更新所有猫咪容器
-    ['heroCat', 'headerCat', 'loadingCat', 'emptyCat'].forEach((id) => {
+    ['heroCat', 'genHeroCat', 'headerCat', 'loadingCat', 'guideLoadingCat', 'emptyCat'].forEach((id) => {
       const el = document.getElementById(id);
       if (el && el.innerHTML) {
         el.innerHTML = this.svgs[state] || this.svgs.idle;
@@ -206,8 +205,10 @@ const CatMascot = {
    */
   init() {
     this.render('heroCat', 'idle');
+    this.render('genHeroCat', 'idle');
     this.render('headerCat', 'idle');
     this.render('loadingCat', 'thinking');
+    this.render('guideLoadingCat', 'thinking');
     // emptyCat is inside a div with class empty-cat, not an SVG container
     const emptyCatEl = document.querySelector('.empty-cat');
     if (emptyCatEl) {

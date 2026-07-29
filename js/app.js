@@ -1,31 +1,47 @@
 /**
- * 文案喵 - 主应用逻辑
- * 事件绑定、状态管理、页面切换
+ * 文案喵 v2.0 — 主应用逻辑
+ * 双模式：引导设计 + 快速生成 + 历史收藏
  */
-
 (function () {
   'use strict';
 
-  // ============ 应用状态 ============
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  // ============ 全局状态 ============
   const state = {
+    currentMode: 'guide',       // 'guide' | 'generate'
+    // Quick mode
     platform: 'xiaohongshu',
     tone: 'cute',
     contentType: 'daily',
     isGenerating: false,
     currentResults: [],
+    // Guide mode
+    guideResults: [],
   };
 
   // ============ DOM 引用 ============
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => document.querySelectorAll(sel);
-
+  // Quick mode
   const keywordInput = $('#keywordInput');
   const btnGenerate = $('#btnGenerate');
   const loadingSection = $('#loadingSection');
-  const loadingText = $('#loadingText');
   const resultsSection = $('#resultsSection');
   const resultsList = $('#resultsList');
   const emptyState = $('#emptyState');
+  // Guide mode
+  const stepPlatform = $('#stepPlatform');
+  const guideLoadingSection = $('#guideLoadingSection');
+  const guideFrameworkSection = $('#guideFrameworkSection');
+  const frameworkCard = $('#frameworkCard');
+  const guideCopySection = $('#guideCopySection');
+  const guideResultsList = $('#guideResultsList');
+  const guideEmptyState = $('#guideEmptyState');
+  const btnStartGenerate = $('#btnStartGenerate');
+  const btnRegenerate = $('#btnRegenerate');
+  const btnNewDesign = $('#btnNewDesign');
+  const btnPrevQ = $('#btnPrevQ');
+  // Shared
   const toast = $('#toast');
   const favBadge = $('#favBadge');
   const historyContent = $('#historyContent');
@@ -37,222 +53,151 @@
     CatMascot.bindClick('heroCat');
     CatMascot.bindClick('headerCat');
 
-    // 加载用户设置
     const settings = Storage.getSettings();
     state.platform = settings.platform || 'xiaohongshu';
     state.tone = settings.tone || 'cute';
     state.contentType = settings.contentType || 'daily';
-
-    // 恢复 UI 选中状态
-    restoreChipStates();
+    restoreQuickChipStates();
     updateFavBadge();
     renderHistory();
     renderFavorites();
     createDecorations();
     bindEvents();
+    GuideFlow.init();
   }
 
-  function restoreChipStates() {
-    // Platform
-    $$('#platformChips .chip').forEach((chip) => {
-      chip.classList.toggle('active', chip.dataset.value === state.platform);
-    });
-    // Tone
-    $$('#toneChips .chip').forEach((chip) => {
-      chip.classList.toggle('active', chip.dataset.value === state.tone);
-    });
-    // Content type
-    $$('#typeChips .chip').forEach((chip) => {
-      chip.classList.toggle('active', chip.dataset.value === state.contentType);
-    });
+  function restoreQuickChipStates() {
+    $$('#platformChips .chip').forEach(c => c.classList.toggle('active', c.dataset.value === state.platform));
+    $$('#toneChips .chip').forEach(c => c.classList.toggle('active', c.dataset.value === state.tone));
+    $$('#typeChips .chip').forEach(c => c.classList.toggle('active', c.dataset.value === state.contentType));
   }
 
   // ============ 事件绑定 ============
   function bindEvents() {
-    // 搜索框回车
-    keywordInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleGenerate();
+    // Nav panel switching
+    $$('.nav-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const panel = btn.dataset.panel;
+        if (panel === 'guide' || panel === 'generator') {
+          state.currentMode = panel;
+        }
+        switchPanel(panel);
+      });
     });
 
-    // 生成按钮
-    btnGenerate.addEventListener('click', handleGenerate);
+    $('#logo').addEventListener('click', () => switchPanel('guide'));
 
-    // 平台选择
-    $('#platformChips').addEventListener('click', (e) => {
+    // ======= Quick Mode Events =======
+    keywordInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleQuickGenerate(); });
+    btnGenerate?.addEventListener('click', handleQuickGenerate);
+
+    $('#platformChips')?.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
-      $$('#platformChips .chip').forEach((c) => c.classList.remove('active'));
+      $$('#platformChips .chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       state.platform = chip.dataset.value;
       Storage.saveSettings({ platform: state.platform });
     });
 
-    // 风格选择
-    $('#toneChips').addEventListener('click', (e) => {
+    $('#toneChips')?.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
-      $$('#toneChips .chip').forEach((c) => c.classList.remove('active'));
+      $$('#toneChips .chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       state.tone = chip.dataset.value;
       Storage.saveSettings({ tone: state.tone });
     });
 
-    // 类型选择
-    $('#typeChips').addEventListener('click', (e) => {
+    $('#typeChips')?.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
-      $$('#typeChips .chip').forEach((c) => c.classList.remove('active'));
+      $$('#typeChips .chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       state.contentType = chip.dataset.value;
       Storage.saveSettings({ contentType: state.contentType });
     });
 
-    // 示例标签点击
-    $$('.example-chip').forEach((chip) => {
+    $('.example-chip')?.forEach(chip => {
       chip.addEventListener('click', () => {
-        keywordInput.value = chip.textContent.trim();
-        handleGenerate();
+        if (keywordInput) keywordInput.value = chip.textContent.trim();
+        handleQuickGenerate();
       });
     });
 
-    // 导航切换
-    $$('.nav-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const panel = btn.dataset.panel;
-        switchPanel(panel);
-      });
-    });
-
-    // Logo 点击回到生成页
-    $('#logo').addEventListener('click', () => {
-      switchPanel('generator');
-    });
-
-    // 结果区域事件委托
-    resultsList.addEventListener('click', handleResultAction);
-
-    // 历史面板事件委托
-    historyContent.addEventListener('click', handleHistoryAction);
-
-    // 收藏面板事件委托
-    favoritesContent.addEventListener('click', handleFavoritesAction);
-
-    // 清空结果
-    $('#btnClearResults').addEventListener('click', () => {
-      resultsSection.style.display = 'none';
-      emptyState.style.display = '';
+    resultsList?.addEventListener('click', handleResultAction);
+    $('#btnClearResults')?.addEventListener('click', () => {
+      if (resultsSection) resultsSection.style.display = 'none';
+      if (emptyState) emptyState.style.display = '';
       state.currentResults = [];
     });
 
-    // 清空历史
-    $('#btnClearHistory').addEventListener('click', () => {
-      if (confirm('确定要清空所有历史记录吗？')) {
-        Storage.clearHistory();
-        renderHistory();
-        showToast('🗑️', '历史记录已清空');
-      }
+    // ======= Guide Mode Events =======
+    btnPrevQ?.addEventListener('click', () => GuideFlow.prevQuestion());
+
+    // Guide platform selector
+    $('#guidePlatformChips')?.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      $$('#guidePlatformChips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      GuideFlow.platform = chip.dataset.value;
     });
 
-    // 清空收藏
-    $('#btnClearFavorites').addEventListener('click', () => {
-      if (confirm('确定要清空所有收藏吗？')) {
-        Storage.clearFavorites();
-        renderFavorites();
-        updateFavBadge();
-        showToast('🗑️', '收藏已清空');
-      }
-    });
+    btnStartGenerate?.addEventListener('click', handleGuidedGenerate);
+    btnRegenerate?.addEventListener('click', handleGuidedGenerate);
+    btnNewDesign?.addEventListener('click', () => GuideFlow.reset());
+
+    // ======= History & Favorites =======
+    historyContent?.addEventListener('click', handleHistoryAction);
+    favoritesContent?.addEventListener('click', handleFavoritesAction);
+    $('#btnClearHistory')?.addEventListener('click', clearHistory);
+    $('#btnClearFavorites')?.addEventListener('click', clearFavorites);
   }
 
   // ============ 面板切换 ============
   function switchPanel(panel) {
-    // 更新导航按钮
-    $$('.nav-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.panel === panel);
-    });
-
-    // 更新面板显示
-    $$('.panel').forEach((p) => {
-      p.classList.toggle('active', p.id === `panel-${panel}`);
-    });
-
-    // 刷新面板内容
+    $$('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === panel));
+    $$('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${panel}`));
     if (panel === 'history') renderHistory();
     if (panel === 'favorites') renderFavorites();
   }
 
-  // ============ 文案生成 ============
-  async function handleGenerate() {
-    const keywords = keywordInput.value.trim();
+  // ============ 快速生成 ============
+  async function handleQuickGenerate() {
+    const keywords = keywordInput?.value.trim();
     if (!keywords) {
-      keywordInput.focus();
-      keywordInput.style.borderColor = 'var(--pink-500)';
-      setTimeout(() => {
-        keywordInput.style.borderColor = '';
-      }, 1500);
+      keywordInput?.focus();
       showToast('🐱', '请输入关键词喵~');
       return;
     }
-
     if (state.isGenerating) return;
 
-    // 开始生成
     state.isGenerating = true;
     btnGenerate.disabled = true;
     btnGenerate.querySelector('.btn-generate-text').textContent = '生成中...';
-    emptyState.style.display = 'none';
-    loadingSection.style.display = '';
-    resultsSection.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
+    if (loadingSection) loadingSection.style.display = '';
+    if (resultsSection) resultsSection.style.display = 'none';
     CatMascot.setState('thinking');
-
-    // 更新加载文案
-    const loadingMessages = [
-      '小喵正在努力思考中...',
-      '正在打磨每一个字...',
-      '让文案更自然一点...',
-      '加点可爱的元素...',
-      '马上就写好啦~',
-    ];
-    let msgIndex = 0;
-    const msgTimer = setInterval(() => {
-      msgIndex = (msgIndex + 1) % loadingMessages.length;
-      loadingText.textContent = loadingMessages[msgIndex];
-    }, 1500);
+    runLoadingMessages('loadingText');
 
     try {
-      const result = await API.generate({
-        keywords,
-        platform: state.platform,
-        tone: state.tone,
-        contentType: state.contentType,
-      });
-
-      clearInterval(msgTimer);
-
-      // 添加到结果
+      const result = await API.generate({ keywords, platform: state.platform, tone: state.tone, contentType: state.contentType });
       state.currentResults.unshift(result);
-
-      // 保存到历史
       Storage.addHistory(result);
-
-      // 渲染结果
-      renderResults();
-
-      // 显示结果区
-      loadingSection.style.display = 'none';
-      resultsSection.style.display = '';
+      renderQuickResults();
+      if (loadingSection) loadingSection.style.display = 'none';
+      if (resultsSection) resultsSection.style.display = '';
       CatMascot.setState('happy');
       showToast('✨', '文案生成好啦~');
-
-      // 3秒后恢复猫咪状态
       setTimeout(() => CatMascot.setState('idle'), 3000);
     } catch (error) {
-      clearInterval(msgTimer);
-      loadingSection.style.display = 'none';
-      emptyState.style.display = '';
+      if (loadingSection) loadingSection.style.display = 'none';
+      if (emptyState) emptyState.style.display = '';
       CatMascot.setState('idle');
-      showToast('😿', error.message || '生成失败，请稍后再试~');
-      console.error('Generate error:', error);
+      showToast('😿', error.message || '生成失败~');
+      console.error(error);
     } finally {
       state.isGenerating = false;
       btnGenerate.disabled = false;
@@ -260,187 +205,160 @@
     }
   }
 
-  // ============ 渲染结果 ============
-  function renderResults() {
-    if (!state.currentResults.length) {
-      resultsSection.style.display = 'none';
-      emptyState.style.display = '';
-      return;
-    }
-
-    resultsList.innerHTML = state.currentResults
-      .map((item, i) => Templates.resultCard(item, i))
-      .join('');
+  function renderQuickResults() {
+    if (!state.currentResults.length) { if (resultsSection) resultsSection.style.display = 'none'; if (emptyState) emptyState.style.display = ''; return; }
+    if (resultsList) resultsList.innerHTML = state.currentResults.map((item, i) => Templates.resultCard(item, i)).join('');
   }
 
-  // ============ 结果区事件处理 ============
   function handleResultAction(e) {
-    const target = e.target.closest('button');
-    if (!target) return;
-
-    // 复制
-    if (target.classList.contains('btn-copy')) {
-      const text = target.dataset.copy;
-      copyToClipboard(text, target);
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.classList.contains('btn-copy')) copyToClipboard(t.dataset.copy, t);
+    if (t.classList.contains('btn-fav')) { toggleFavorite(t.dataset.copy, t.dataset.item, t); }
+    if (t.classList.contains('btn-regenerate')) {
+      if (keywordInput) keywordInput.value = t.dataset.keywords;
+      state.platform = t.dataset.platform; state.tone = t.dataset.tone; state.contentType = t.dataset.type;
+      restoreQuickChipStates(); handleQuickGenerate(); window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  }
 
-    // 收藏 / 取消收藏
-    if (target.classList.contains('btn-fav')) {
-      const copyText = target.dataset.copy;
-      let item;
-      try {
-        item = JSON.parse(target.dataset.item);
-      } catch {
-        item = { copy: copyText, platform: state.platform, tone: state.tone, contentType: state.contentType };
+  // ============ 引导生成 ============
+  async function handleGuidedGenerate() {
+    if (state.isGenerating) return;
+    const guideData = GuideFlow.getData();
+
+    state.isGenerating = true;
+    btnStartGenerate && (btnStartGenerate.disabled = true);
+    stepPlatform && (stepPlatform.style.display = 'none');
+    guideFrameworkSection && (guideFrameworkSection.style.display = 'none');
+    guideCopySection && (guideCopySection.style.display = 'none');
+    guideLoadingSection && (guideLoadingSection.style.display = '');
+    if (guideEmptyState) guideEmptyState.style.display = 'none';
+    CatMascot.setState('thinking');
+    runLoadingMessages('guideLoadingText');
+    GuideFlow.updateProgress(2);
+
+    try {
+      const result = await API.generateGuided(guideData);
+      guideLoadingSection && (guideLoadingSection.style.display = 'none');
+      CatMascot.setState('happy');
+
+      // Show framework
+      if (result.framework && Object.keys(result.framework).length > 0) {
+        GuideFlow.updateProgress(2);
+        frameworkCard.innerHTML = Templates.frameworkCard(result.framework);
+        guideFrameworkSection.style.display = '';
       }
 
-      if (Storage.isFavorited(copyText)) {
-        Storage.removeFavorite(copyText);
-        target.classList.remove('favorited');
-        target.innerHTML = '☆ 收藏';
-        showToast('💔', '已取消收藏');
-      } else {
-        Storage.addFavorite(item);
-        target.classList.add('favorited');
-        target.innerHTML = '⭐ 已收藏';
-        showToast('⭐', '已添加到收藏');
-      }
-      updateFavBadge();
-    }
+      // Show copy
+      GuideFlow.updateProgress(3);
+      guideCopySection.style.display = '';
+      const copyData = {
+        ...result,
+        themeName: guideData.themeName,
+        themeEmoji: guideData.themeEmoji,
+      };
+      guideResultsList.innerHTML = Templates.guidedCopyCard(copyData, 0);
+      state.guideResults = [copyData];
 
-    // 重新生成
-    if (target.classList.contains('btn-regenerate')) {
-      keywordInput.value = target.dataset.keywords;
-      state.platform = target.dataset.platform;
-      state.tone = target.dataset.tone;
-      state.contentType = target.dataset.type;
-      restoreChipStates();
-      handleGenerate();
-      // 滚动到顶部
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }
+      // Save to history
+      Storage.addHistory({ ...result, keywords: `${guideData.themeEmoji} ${guideData.themeName}`, platform: result.platform || guideData.platform, tone: 'guided', contentType: guideData.theme || 'guided' });
 
-  // ============ 历史面板事件 ============
-  function handleHistoryAction(e) {
-    const target = e.target.closest('button');
-    if (!target) return;
-
-    if (target.classList.contains('btn-copy')) {
-      copyToClipboard(target.dataset.copy, target);
-    }
-
-    if (target.classList.contains('btn-remove-history')) {
-      const id = parseInt(target.dataset.id);
-      Storage.removeHistoryItem(id);
-      renderHistory();
-      showToast('🗑️', '已删除');
+      showToast('✨', '框架和文案都生成好啦~');
+      setTimeout(() => CatMascot.setState('idle'), 3000);
+    } catch (error) {
+      guideLoadingSection && (guideLoadingSection.style.display = 'none');
+      if (guideEmptyState) guideEmptyState.style.display = '';
+      CatMascot.setState('idle');
+      showToast('😿', error.message || '生成失败~');
+      console.error(error);
+    } finally {
+      state.isGenerating = false;
+      btnStartGenerate && (btnStartGenerate.disabled = false);
     }
   }
 
-  // ============ 收藏面板事件 ============
-  function handleFavoritesAction(e) {
-    const target = e.target.closest('button');
-    if (!target) return;
-
-    if (target.classList.contains('btn-copy')) {
-      copyToClipboard(target.dataset.copy, target);
-    }
-
-    if (target.classList.contains('btn-remove-fav')) {
-      Storage.removeFavorite(target.dataset.copy);
-      renderFavorites();
-      updateFavBadge();
-      showToast('💔', '已取消收藏');
-    }
-  }
-
-  // ============ 渲染历史和收藏 ============
-  function renderHistory() {
-    const history = Storage.getHistory();
-    historyContent.innerHTML = Templates.historyList(history);
-  }
-
-  function renderFavorites() {
-    const favorites = Storage.getFavorites();
-    favoritesContent.innerHTML = Templates.favoritesList(favorites);
-  }
-
+  // ============ 历史 & 收藏 ============
+  function renderHistory() { if (historyContent) historyContent.innerHTML = Templates.historyList(Storage.getHistory()); }
+  function renderFavorites() { if (favoritesContent) favoritesContent.innerHTML = Templates.favoritesList(Storage.getFavorites()); }
   function updateFavBadge() {
-    const count = Storage.getFavorites().length;
-    if (count > 0) {
-      favBadge.style.display = 'flex';
-      favBadge.textContent = count;
-    } else {
-      favBadge.style.display = 'none';
-    }
+    const c = Storage.getFavorites().length;
+    if (c > 0) { favBadge.style.display = 'flex'; favBadge.textContent = c; }
+    else favBadge.style.display = 'none';
   }
 
-  // ============ 复制功能 ============
+  function handleHistoryAction(e) {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.classList.contains('btn-copy')) copyToClipboard(t.dataset.copy, t);
+    if (t.classList.contains('btn-remove-history')) { Storage.removeHistoryItem(parseInt(t.dataset.id)); renderHistory(); showToast('🗑️', '已删除'); }
+  }
+
+  function handleFavoritesAction(e) {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.classList.contains('btn-copy')) copyToClipboard(t.dataset.copy, t);
+    if (t.classList.contains('btn-remove-fav')) { Storage.removeFavorite(t.dataset.copy); renderFavorites(); updateFavBadge(); showToast('💔', '已取消收藏'); }
+  }
+
+  function clearHistory() { if (confirm('确定清空所有历史？')) { Storage.clearHistory(); renderHistory(); showToast('🗑️', '已清空'); } }
+  function clearFavorites() { if (confirm('确定清空所有收藏？')) { Storage.clearFavorites(); renderFavorites(); updateFavBadge(); showToast('🗑️', '已清空'); } }
+
+  function toggleFavorite(copyText, itemJson, btn) {
+    let item;
+    try { item = JSON.parse(itemJson); } catch { item = { copy: copyText, platform: state.platform, tone: state.tone }; }
+    if (Storage.isFavorited(copyText)) { Storage.removeFavorite(copyText); btn.classList.remove('favorited'); btn.innerHTML = '☆ 收藏'; showToast('💔', '已取消'); }
+    else { Storage.addFavorite(item); btn.classList.add('favorited'); btn.innerHTML = '⭐ 已收藏'; showToast('⭐', '已收藏'); }
+    updateFavBadge();
+  }
+
+  // ============ 复制 ============
   async function copyToClipboard(text, button) {
     try {
       await navigator.clipboard.writeText(text);
-
-      if (button) {
-        const originalHTML = button.innerHTML;
-        button.classList.add('copied');
-        button.innerHTML = '✅ 已复制';
-        setTimeout(() => {
-          button.classList.remove('copied');
-          button.innerHTML = originalHTML;
-        }, 2000);
-      }
-
-      showToast('📋', '已复制到剪贴板~');
+      if (button) { const o = button.innerHTML; button.classList.add('copied'); button.innerHTML = '✅ 已复制'; setTimeout(() => { button.classList.remove('copied'); button.innerHTML = o; }, 2000); }
+      showToast('📋', '已复制~');
     } catch {
-      // Fallback: 选中文本
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      showToast('📋', '已复制到剪贴板~');
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      showToast('📋', '已复制~');
     }
   }
 
-  // ============ Toast 提示 ============
+  // ============ Toast ============
   let toastTimer;
-
-  function showToast(icon, message) {
+  function showToast(icon, msg) {
     clearTimeout(toastTimer);
     toast.querySelector('.toast-icon').textContent = icon;
-    toast.querySelector('.toast-text').textContent = message;
+    toast.querySelector('.toast-text').textContent = msg;
     toast.classList.add('show');
-    toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-    }, 2000);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+  window.showToast = showToast; // expose for guide.js
+
+  // ============ Loading messages ============
+  function runLoadingMessages(elId) {
+    const msgs = ['小喵正在构思...', '让内容更有设计感...', '打磨每一个细节...', '马上就好~'];
+    const el = document.getElementById(elId);
+    if (!el) return;
+    let i = 0;
+    el.textContent = msgs[0];
+    const timer = setInterval(() => { i = (i + 1) % msgs.length; el.textContent = msgs[i]; }, 1500);
+    return timer;
   }
 
   // ============ 浮动装饰 ============
   function createDecorations() {
-    const container = $('#decorations');
-    const emojis = ['🌸', '🐾', '💕', '⭐', '🎀', '✨', '🍰', '💖', '🌺', '🦋', '☁️', '🌈'];
-    const fragment = document.createDocumentFragment();
-
+    const c = $('#decorations'); if (!c) return;
+    const emojis = ['🌸','🐾','💕','⭐','🎀','✨','🍰','💖','🌺','🦋','☁️','🌈'];
+    const frag = document.createDocumentFragment();
     for (let i = 0; i < 18; i++) {
-      const el = document.createElement('span');
-      el.className = 'deco-item';
-      el.textContent = emojis[i % emojis.length];
+      const el = document.createElement('span'); el.className = 'deco-item'; el.textContent = emojis[i % emojis.length];
       el.style.setProperty('--size', `${0.8 + Math.random() * 1.8}rem`);
       el.style.setProperty('--dur', `${8 + Math.random() * 12}s`);
       el.style.setProperty('--delay', `${Math.random() * 10}s`);
-      el.style.left = `${Math.random() * 95}%`;
-      el.style.top = `${Math.random() * 90}%`;
+      el.style.left = `${Math.random() * 95}%`; el.style.top = `${Math.random() * 90}%`;
       el.style.opacity = `${0.12 + Math.random() * 0.18}`;
-      fragment.appendChild(el);
+      frag.appendChild(el);
     }
-
-    container.appendChild(fragment);
+    c.appendChild(frag);
   }
 
-  // ============ 启动 ============
   document.addEventListener('DOMContentLoaded', init);
 })();
