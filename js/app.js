@@ -118,7 +118,7 @@
       Storage.saveSettings({ contentType: state.contentType });
     });
 
-    $('.example-chip')?.forEach(chip => {
+    $$('.example-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         if (keywordInput) keywordInput.value = chip.textContent.trim();
         handleQuickGenerate();
